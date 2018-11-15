@@ -1,0 +1,135 @@
+---
+title: "Reproducible Research - Course Project 2"
+output: html_document
+---
+
+# Health and Economic Consequences of Weather Events in United States
+
+# Synopsis
+The report addresses questions regarding the most hurtful weather type events in terms of deaths, injuries, property and crop damage
+
+# Data Processing
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load needed packages
+```{r, echo=FALSE}
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+library(markdown)
+library(plyr)
+
+```
+
+```{r, echo=FALSE}
+setwd("/Users/iopetrid/Desktop/Coursera/Data Science/5_Reproducible Research/Course Project 2")
+
+storm<-read.csv("./repdata-data-StormData.csv.bz2",header = TRUE, sep=",")
+str(storm)
+head(tbl_df(storm))
+```
+## Questions
+
+### 1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+```{r}
+# Subset the data using only the values needed
+var2use<-c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")
+storm<-storm[var2use]
+str(storm)
+head(tbl_df(storm))
+
+# For this question I am going to find which EVTYPE leads to more FATALITES and INJURIES and present the 10 most dominant ones
+total_deaths<-aggregate(FATALITIES ~ EVTYPE, data=storm, FUN = sum)
+
+total_injuries<-aggregate(INJURIES ~ EVTYPE, data=storm, FUN = sum)
+
+total_deaths_sorted<- total_deaths %>% arrange(-total_deaths$FATALITIES)
+
+total_injuries_sorted<- total_injuries %>% arrange(-total_injuries$INJURIES)
+
+most_fatal_events<-head(total_deaths_sorted,10)
+most_fatal_events
+
+par(mfrow = c(1,1), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(most_fatal_events$FATALITIES, names.arg = most_fatal_events$EVTYPE,las = 3,col="wheat",main="10 most fatal events",ylab="# of Deaths")
+dev.copy(png, "fatal-events.png", width = 480, height = 480)
+dev.off()
+
+most_injuries_events<-head(total_injuries_sorted,10)
+most_injuries_events
+
+par(mfrow = c(1,1), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(most_injuries_events$INJURIES, names.arg = most_injuries_events$EVTYPE,las = 3,col="grey", main="10 events causing the most injuries",ylab="# of Injuries")
+dev.copy(png, "injuries-events.png", width = 480, height = 480)
+dev.off()
+```
+
+### 2. Across the United States, which types of events have the greatest economic consequences?
+```{r}
+# For this question I am going to find which EVTYPE lead to more property and crop damage (PROPDMGTOTAL,CROPDMGTOTAL) and present the 10 most fatal ones
+
+#first I need to create a total variable for property and crop damage
+# PROPDMGTOTAL=PROPDMG+PROPDMGEXP
+storm$PROPDMGEXP <- mapvalues(storm$PROPDMGEXP, from = c("K", "M","", "B", "m", "+", "0", "5", "6", "?", "4", "2", "3", "h", "7", "H", "-", "1", "8"), to = c(10^3, 10^6, 1, 10^9, 10^6, 0,1,10^5, 10^6, 0, 10^4, 10^2, 10^3, 10^2, 10^7, 10^2, 0, 10, 10^8))
+storm$PROPDMGEXP <- as.numeric(as.character(storm$PROPDMGEXP))
+storm$PROPDMGTOTAL <- (storm$PROPDMG * storm$PROPDMGEXP)/1000000000
+
+prop_damage<-aggregate(PROPDMGTOTAL ~ EVTYPE, data=storm, FUN = sum)
+
+#CROPDMGTOTAL=CROPDMG+CROPDMGEXP
+storm$CROPDMGEXP <- mapvalues(storm$CROPDMGEXP, from = c("","M", "K", "m", "B", "?", "0", "k","2"), to = c(1,10^6, 10^3, 10^6, 10^9, 0, 1, 10^3, 10^2))
+storm$CROPDMGEXP <- as.numeric(as.character(storm$CROPDMGEXP))
+storm$CROPDMGTOTAL <- (storm$CROPDMG * storm$CROPDMGEXP)/1000000000
+
+crop_damage<-aggregate(CROPDMGTOTAL ~ EVTYPE, data=storm, FUN = sum)
+
+total_prop_damage<- prop_damage %>% arrange(-prop_damage$PROPDMGTOTAL)
+
+total_crop_damage<- crop_damage %>% arrange(-crop_damage$CROPDMGTOTAL)
+
+most_prop_damage_events<-head(total_prop_damage,10)
+most_prop_damage_events
+
+par(mfrow = c(1,1), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(most_prop_damage_events$PROPDMGTOTAL, names.arg = most_prop_damage_events$EVTYPE,las = 3,col="wheat",main="10 events that damage property",ylab="Property Damage (Billions)")
+dev.copy(png, "prop_damage.png", width = 480, height = 480)
+dev.off()
+
+most_crop_damage_events<-head(total_crop_damage,10)
+most_crop_damage_events
+
+par(mfrow = c(1,1), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(most_crop_damage_events$CROPDMGTOTAL, names.arg = most_crop_damage_events$EVTYPE,las = 3,col="grey", main="10 events causing the most injuries",ylab="10 events that damage crops (Billions)")
+dev.copy(png, "crop_damage.png", width = 480, height = 480)
+dev.off()
+```
+# Results
+
+### 1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+The analysis and graphs indicate the most harmful type of weather phenomena with respect to death are
+*Tornados
+*Excessive Heat
+*Flash Flood
+while in terms of injuries are
+*Tornados
+*TSTM Wind
+*Flood
+
+
+### 2. Across the United States, which types of events have the greatest economic consequences?
+
+The most harmful events in terms of property damage are
+*Flood
+*Hurricanes/Typhoons
+*Tornados
+while in terms of crop damage are
+*Drought
+*Flood
+*River Flood
+
+```{r}
+```
